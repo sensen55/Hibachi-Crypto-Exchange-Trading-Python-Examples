@@ -25,78 +25,113 @@ A professional cryptocurrency trading bot for Hibachi Exchange with real-time pr
 
 ## Installation 📦
 
-1. Clone this repository:
+### Option A: Docker (Recommended for VPS)
+
 ```bash
-git clone https://github.com/yourusername/Hibachi-Crypto-Exchange-Trading-Python-Examples.git
+# 1. Clone and enter the repo
+git clone https://github.com/sensen55/Hibachi-Crypto-Exchange-Trading-Python-Examples.git
 cd Hibachi-Crypto-Exchange-Trading-Python-Examples
-```
 
-2. Install dependencies:
-```bash
-pip install -r requirements.txt
-```
-
-3. Set up your environment variables:
-```bash
+# 2. Copy and edit config
 cp .env.example .env
+# Edit .env if needed (paper trading does NOT require API keys)
+
+# 3. Build and start
+docker compose up -d --build
+
+# 4. Watch logs
+docker compose logs -f paper-btc-long
+
+# 5. Stop (auto-closes open position)
+docker compose down
 ```
 
-4. Edit `.env` with your Hibachi Exchange credentials
+#### Running Multiple Bots
+
+Edit `docker-compose.yml` to uncomment additional services, then:
+
+```bash
+docker compose up -d --build
+```
+
+Each bot has its own data directory (`./data/btc-long/`, `./data/eth-short/`, etc.)
+so they never interfere with each other.
+
+#### Updating the Code
+
+```bash
+cd Hibachi-Crypto-Exchange-Trading-Python-Examples
+git pull origin main
+docker compose down
+docker compose up -d --build
+```
+
+### Option B: Direct Python (without Docker)
+
+```bash
+# 1. Clone and enter the repo
+git clone https://github.com/sensen55/Hibachi-Crypto-Exchange-Trading-Python-Examples.git
+cd Hibachi-Crypto-Exchange-Trading-Python-Examples
+
+# 2. Install dependencies (Python 3.11+)
+pip install -r requirements.txt
+
+# 3. Copy and edit config
+cp .env.example .env
+
+# 4. Run paper trading bot
+PAPER_STATE_FILE=./paper_state.json python paper_main.py
+```
 
 ## Configuration ⚙️
 
-### Environment Variables (.env)
+All settings are controlled via environment variables (`.env` file or `docker-compose.yml`).
 
-```env
-# Required - Get these from Hibachi Exchange
-HIBACHI_API_KEY=your_api_key_here
-HIBACHI_ACCOUNT_ID=your_account_id_here
-HIBACHI_PRIVATE_KEY=your_private_key_here
+### Trading Settings
 
-# Optional - Defaults shown
-HIBACHI_SYMBOL=BTC/USDT-P
-```
+| Variable | Description | Default |
+|---|---|---|
+| `HIBACHI_SYMBOL` | Trading pair | `BTC/USDT-P` |
+| `POSITION_SIZE_USD` | Margin per trade (USD) | `100` |
+| `LEVERAGE` | Leverage multiplier | `2` |
+| `TAKE_PROFIT` | TP % on margin | `2.0` |
+| `STOP_LOSS` | SL % on margin (negative) | `-1.0` |
+| `LOOP_SLEEP` | Seconds between price checks | `3` |
 
-### Bot Settings
+### Paper Trading Settings
 
-Edit these constants at the top of `trading_bot.py`:
+| Variable | Description | Default |
+|---|---|---|
+| `PAPER_BALANCE` | Starting virtual balance | `10000` |
+| `BOT_MODE` | `long` / `short` / `monitor` / `alternate` | `long` |
+| `CYCLE_COOLDOWN` | Seconds between trade cycles | `10` |
+| `LOG_LEVEL` | `DEBUG` / `INFO` / `WARNING` / `ERROR` | `INFO` |
+| `PAPER_STATE_FILE` | Path for state persistence | `/data/paper_state.json` |
 
-```python
-POSITION_SIZE_USD = 100  # Position size in USD (will be leveraged)
-TAKE_PROFIT = 2.0        # Take profit at 2% gain
-STOP_LOSS = -1.0         # Stop loss at 1% loss
-LOOP_SLEEP = 2           # Sleep between loops (seconds)
-```
+### Live Trading Settings (requires API keys)
+
+| Variable | Description |
+|---|---|
+| `HIBACHI_API_KEY` | API key from Hibachi console |
+| `HIBACHI_ACCOUNT_ID` | Account ID |
+| `HIBACHI_PRIVATE_KEY` | Private key for signing |
 
 ## Usage 🎮
 
-Run the bot:
+### Paper Trading (Docker)
 ```bash
-python trading_bot.py
+docker compose up -d --build
+docker compose logs -f paper-btc-long
 ```
 
-### Test Scripts
-
-Run these scripts to test various functionalities:
-
-1. **Test API connection**:
+### Paper Trading (Direct)
 ```bash
-python 0_test_keys.py
+PAPER_STATE_FILE=./paper_state.json python paper_main.py
 ```
 
-2. **Check account balances**:
+### Live Trading (requires API keys + Python 3.13+)
 ```bash
-python 1_get_balances.py
-```
-
-3. **Get current prices**:
-```bash
-python 2_get_prices.py
-```
-
-4. **Place a test order**:
-```bash
-python 3_place_order.py
+python main.py
 ```
 
 ### Trading Flow - Perfect for Manual Traders Going Automated! 🎯
@@ -122,13 +157,14 @@ python 3_place_order.py
 
 ## Files 📁
 
-- `trading_bot.py` - Main bot with interactive menu
+- `paper_main.py` - Paper trading bot (headless, Docker compatible)
+- `paper_trading.py` - Paper trading engine (simulates orders/positions locally)
+- `hibachi_market.py` - Lightweight market data client (no SDK dependency, Python 3.11+)
+- `main.py` - Live trading bot with interactive menu (requires SDK + Python 3.13+)
 - `nice_funks.py` - Hibachi Exchange API wrapper
-- `0_test_keys.py` - Test API connection
-- `1_get_balances.py` - Get account balances
-- `2_get_prices.py` - Get current market prices
-- `3_place_order.py` - Place and manage orders
-- `.env.example` - Environment variable template
+- `Dockerfile` - Docker image definition
+- `docker-compose.yml` - Multi-bot Docker configuration
+- `.env.example` - Full configuration reference
 - `requirements.txt` - Python dependencies
 
 ## Safety Features 🛡️
