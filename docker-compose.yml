@@ -1,0 +1,58 @@
+services:
+  # Paper trading bot - BTC Long
+  paper-btc-long:
+    build: .
+    container_name: hibachi-paper-btc-long
+    restart: unless-stopped
+    volumes:
+      - ./data/btc-long:/data
+    environment:
+      - HIBACHI_SYMBOL=BTC/USDT-P
+      - BOT_MODE=long
+      - PAPER_BALANCE=10000
+      - POSITION_SIZE_USD=100
+      - LEVERAGE=2
+      - TAKE_PROFIT=2.0
+      - STOP_LOSS=-1.0
+      - LOOP_SLEEP=3
+      - CYCLE_COOLDOWN=10
+      - LOG_LEVEL=INFO
+
+  # Example: Paper trading bot - ETH Short
+  # Uncomment to run multiple bots in parallel
+  #
+  # paper-eth-short:
+  #   build: .
+  #   container_name: hibachi-paper-eth-short
+  #   restart: unless-stopped
+  #   volumes:
+  #     - ./data/eth-short:/data
+  #   environment:
+  #     - HIBACHI_SYMBOL=ETH/USDT-P
+  #     - BOT_MODE=short
+  #     - PAPER_BALANCE=10000
+  #     - POSITION_SIZE_USD=50
+  #     - LEVERAGE=3
+  #     - TAKE_PROFIT=3.0
+  #     - STOP_LOSS=-1.5
+  #     - LOOP_SLEEP=3
+  #     - LOG_LEVEL=INFO
+
+  # Example: Paper trading bot - SOL Alternate
+  #
+  # paper-sol-alt:
+  #   build: .
+  #   container_name: hibachi-paper-sol-alt
+  #   restart: unless-stopped
+  #   volumes:
+  #     - ./data/sol-alt:/data
+  #   environment:
+  #     - HIBACHI_SYMBOL=SOL/USDT-P
+  #     - BOT_MODE=alternate
+  #     - PAPER_BALANCE=5000
+  #     - POSITION_SIZE_USD=50
+  #     - LEVERAGE=2
+  #     - TAKE_PROFIT=1.5
+  #     - STOP_LOSS=-1.0
+  #     - LOOP_SLEEP=3
+  #     - LOG_LEVEL=INFO

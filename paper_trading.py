@@ -18,7 +18,7 @@ load_dotenv()
 
 logger = logging.getLogger(__name__)
 
-STATE_FILE = "paper_state.json"
+STATE_FILE = os.environ.get("PAPER_STATE_FILE", "/data/paper_state.json")
 
 
 @dataclass
