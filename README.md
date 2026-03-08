@@ -32,17 +32,20 @@ A professional cryptocurrency trading bot for Hibachi Exchange with real-time pr
 git clone https://github.com/sensen55/Hibachi-Crypto-Exchange-Trading-Python-Examples.git
 cd Hibachi-Crypto-Exchange-Trading-Python-Examples
 
-# 2. Copy and edit config
+# 2. If you already cloned the repo, pull the latest changes
+git pull origin main
+
+# 3. Copy and edit config
 cp .env.example .env
 # Edit .env if needed (paper trading does NOT require API keys)
 
-# 3. Build and start
+# 4. Build and start
 docker compose up -d --build
 
-# 4. Watch logs
+# 5. Watch logs
 docker compose logs -f paper-btc-long
 
-# 5. Stop (auto-closes open position)
+# 6. Stop (auto-closes open position)
 docker compose down
 ```
 
@@ -61,8 +64,8 @@ so they never interfere with each other.
 
 ```bash
 cd Hibachi-Crypto-Exchange-Trading-Python-Examples
-git pull origin main
 docker compose down
+git pull origin main
 docker compose up -d --build
 ```
 
