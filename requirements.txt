@@ -1,3 +1,6 @@
-hibachi-xyz>=0.1.0
+# For live trading (requires Python 3.13+)
+# hibachi-xyz>=0.1.0
+
+# For paper trading (works with Python 3.11+)
 python-dotenv>=1.0.0
 requests>=2.31.0

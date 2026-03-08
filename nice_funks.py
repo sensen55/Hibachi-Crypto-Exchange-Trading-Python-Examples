@@ -162,3 +162,92 @@ class HibachiAPI:
         if ask:
             return usd_value / ask
         return 0
+
+    def pnl_close(self, symbol: str, take_profit_pct: float, stop_loss_pct: float,
+                  position_size_usd: float, leverage: int = 1):
+        """
+        Check P&L and close position if TP/SL hit.
+        Returns (should_close, pnl_percent, pnl_usd) tuple.
+        """
+        _, in_pos, size, _, entry, unrealized_pnl, is_long = self.get_position(symbol)
+        if not in_pos:
+            return False, 0, 0
+
+        bid, ask = self.get_bid_ask(symbol)
+        if not bid or not ask:
+            return False, 0, 0
+
+        current_price = (bid + ask) / 2
+        position_value = abs(size) * entry
+        current_value = abs(size) * current_price
+
+        if is_long:
+            pnl_usd = current_value - position_value
+        else:
+            pnl_usd = position_value - current_value
+
+        margin = position_size_usd
+        pnl_percent = (pnl_usd / margin) * 100 if margin > 0 else 0
+
+        if pnl_percent >= take_profit_pct or pnl_percent <= stop_loss_pct:
+            # Close with market order
+            try:
+                if is_long:
+                    self.sell_market(symbol, abs(size), leverage)
+                else:
+                    self.buy_market(symbol, abs(size), leverage)
+                return True, pnl_percent, pnl_usd
+            except Exception as e:
+                print(f"Error closing position: {e}")
+
+        return False, pnl_percent, pnl_usd
+
+    def get_market_leverage(self, symbol: str):
+        """Get maximum leverage for a market based on initial margin rate."""
+        try:
+            exch_info = self.client.get_exchange_info()
+            if hasattr(exch_info, 'futureContracts'):
+                for contract in exch_info.futureContracts:
+                    if hasattr(contract, 'symbol') and contract.symbol == symbol:
+                        margin_rate = float(contract.initialMarginRate)
+                        if margin_rate > 0:
+                            return int(1 / margin_rate)
+            return 1
+        except Exception as e:
+            print(f"Error getting leverage: {e}")
+            return 1
+
+    def get_max_position_value(self, symbol: str):
+        """Get maximum position value for the account based on balance and leverage."""
+        try:
+            account_info = self.client.get_account_info()
+            balance = float(account_info.balance) if hasattr(account_info, 'balance') else 0
+            max_leverage = self.get_market_leverage(symbol)
+            return balance * max_leverage
+        except Exception as e:
+            print(f"Error getting max position value: {e}")
+            return 0
+
+    def get_account_info(self):
+        """Get full account information."""
+        return self.client.get_account_info()
+
+    def get_exchange_info(self):
+        """Get exchange information including fee config and contracts."""
+        return self.client.get_exchange_info()
+
+    def round_to_step_size(self, symbol: str, quantity: float):
+        """Round quantity to the correct step size for a symbol."""
+        try:
+            exch_info = self.client.get_exchange_info()
+            if hasattr(exch_info, 'futureContracts'):
+                for contract in exch_info.futureContracts:
+                    if hasattr(contract, 'symbol') and contract.symbol == symbol:
+                        step_size = float(contract.stepSize)
+                        if step_size > 0:
+                            precision = len(str(step_size).rstrip('0').split('.')[-1])
+                            return round(quantity - (quantity % step_size), precision)
+            return quantity
+        except Exception as e:
+            print(f"Error rounding to step size: {e}")
+            return quantity
