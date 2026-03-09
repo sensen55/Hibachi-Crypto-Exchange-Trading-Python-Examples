@@ -10,6 +10,7 @@ RUN pip install --no-cache-dir -r requirements.txt
 COPY hibachi_market.py .
 COPY paper_trading.py .
 COPY paper_main.py .
+COPY mm_bot.py .
 COPY nice_funks.py .
 COPY main.py .
 

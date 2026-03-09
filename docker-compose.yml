@@ -18,6 +18,28 @@ services:
       - CYCLE_COOLDOWN=10
       - LOG_LEVEL=INFO
 
+  # Market Making bot - BTC
+  mm-btc:
+    build: .
+    container_name: hibachi-mm-btc
+    restart: unless-stopped
+    command: ["python", "-u", "mm_bot.py"]
+    volumes:
+      - ./data/mm-btc:/data
+    environment:
+      - HIBACHI_SYMBOL=BTC/USDT-P
+      - PAPER_BALANCE=10000
+      - MM_SPREAD_BPS=5
+      - MM_ORDER_SIZE_USD=50
+      - MM_LEVELS=1
+      - MM_LEVEL_SPACING_BPS=3
+      - MM_MAX_INVENTORY_USD=500
+      - MM_SKEW_BPS_PER_PCT=0.5
+      - MM_REQUOTE_INTERVAL=5
+      - MM_STALE_THRESHOLD_BPS=10
+      - LEVERAGE=1
+      - LOG_LEVEL=INFO
+
   # Example: Paper trading bot - ETH Short
   # Uncomment to run multiple bots in parallel
   #
