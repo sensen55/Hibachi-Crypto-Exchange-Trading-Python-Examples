@@ -140,23 +140,23 @@ class MarketMakingBot:
     def _inventory_skew_bps(self):
         """
         Calculate how much to shift the mid price based on inventory.
-        Positive skew = shift mid price UP (discourages more buys, encourages sells).
-        Negative skew = shift mid price DOWN.
+        When long: shift mid DOWN so sell orders are closer to market (easier to fill).
+        When short: shift mid UP so buy orders are closer to market (easier to fill).
         """
         direction, _, notional, _ = self.get_inventory()
         if notional == 0:
             return 0.0
 
-        # inventory_pct: how full is our inventory as % of max
-        inventory_pct = (notional / self.max_inventory_usd) * 100
+        # inventory_pct: how full is our inventory as % of max (capped at 100%)
+        inventory_pct = min((notional / self.max_inventory_usd) * 100, 100.0)
         skew = inventory_pct * self.skew_bps_per_pct
 
         if direction == 'long':
-            # We're long → shift mid UP to sell more / buy less
-            return skew
-        elif direction == 'short':
-            # We're short → shift mid DOWN to buy more / sell less
+            # We're long → shift mid DOWN to bring sell orders closer to market
             return -skew
+        elif direction == 'short':
+            # We're short → shift mid UP to bring buy orders closer to market
+            return skew
         return 0.0
 
     def _should_quote_side(self, side):
