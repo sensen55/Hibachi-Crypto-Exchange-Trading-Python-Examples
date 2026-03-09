@@ -33,6 +33,9 @@ class HibachiMarketClient:
         """Make a GET request."""
         resp = self.session.get(url, params=params, timeout=10)
         resp.raise_for_status()
+        if not resp.content:
+            logger.warning(f"Empty response from {url}")
+            return {}
         return resp.json()
 
     # =========================================================================
@@ -56,7 +59,7 @@ class HibachiMarketClient:
         Get current prices for a symbol.
         Returns: {bidPrice, askPrice, markPrice, spotPrice, tradePrice, fundingRateEstimation}
         """
-        return self._get(f"{self.data_api_url}/prices", params={"symbol": symbol})
+        return self._get(f"{self.data_api_url}/market/data/prices", params={"symbol": symbol})
 
     def get_bid_ask(self, symbol: str):
         """Get bid and ask prices. Returns (bid, ask) tuple."""
@@ -78,7 +81,7 @@ class HibachiMarketClient:
         Get orderbook for a symbol.
         Returns: {bid: [{price, quantity}, ...], ask: [{price, quantity}, ...]}
         """
-        return self._get(f"{self.data_api_url}/orderbook", params={
+        return self._get(f"{self.data_api_url}/market/data/orderbook", params={
             "symbol": symbol,
             "depth": depth,
             "granularity": granularity,
@@ -102,14 +105,14 @@ class HibachiMarketClient:
 
     def get_stats(self, symbol: str) -> Dict:
         """Get 24h stats: {high24h, low24h, symbol, volume24h}."""
-        return self._get(f"{self.data_api_url}/stats", params={"symbol": symbol})
+        return self._get(f"{self.data_api_url}/market/data/stats", params={"symbol": symbol})
 
     def get_klines(self, symbol: str, interval: str = '1h', limit: int = 100) -> Dict:
         """
         Get candlestick data.
         Intervals: 1m, 5m, 15m, 30m, 1h, 4h, 1d, 1w
         """
-        return self._get(f"{self.data_api_url}/klines", params={
+        return self._get(f"{self.data_api_url}/market/data/klines", params={
             "symbol": symbol,
             "interval": interval,
             "limit": limit,
@@ -117,11 +120,11 @@ class HibachiMarketClient:
 
     def get_trades(self, symbol: str) -> Dict:
         """Get recent trades."""
-        return self._get(f"{self.data_api_url}/trades", params={"symbol": symbol})
+        return self._get(f"{self.data_api_url}/market/data/trades", params={"symbol": symbol})
 
     def get_open_interest(self, symbol: str) -> Dict:
         """Get open interest."""
-        return self._get(f"{self.data_api_url}/open-interest", params={"symbol": symbol})
+        return self._get(f"{self.data_api_url}/market/data/open-interest", params={"symbol": symbol})
 
     # =========================================================================
     # Market info helpers
