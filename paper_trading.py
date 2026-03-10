@@ -321,30 +321,20 @@ class PaperTradingAPI:
             if not bid or not ask:
                 continue
 
+            # Resting limit orders fill when the opposite side reaches
+            # the order price.  These are always maker fills because
+            # spread-crossing was already handled at placement time
+            # (see buy_limit / sell_limit).
             should_fill = False
             if order['side'] == 'buy' and order['price'] >= ask:
-                # Buy limit at or above ask → immediate fill
                 should_fill = True
             elif order['side'] == 'sell' and order['price'] <= bid:
-                # Sell limit at or below bid → immediate fill
-                should_fill = True
-            elif order['side'] == 'buy' and order['price'] >= bid:
-                # Buy limit at or above bid → maker fill (resting on book)
-                should_fill = True
-            elif order['side'] == 'sell' and order['price'] <= ask:
-                # Sell limit at or below ask → maker fill
                 should_fill = True
 
             if should_fill:
-                is_maker = True
-                if order['side'] == 'buy' and order['price'] >= ask:
-                    is_maker = False  # Crossing the spread
-                elif order['side'] == 'sell' and order['price'] <= bid:
-                    is_maker = False
-
                 self._execute_fill(
                     order['symbol'], order['side'], order['quantity'],
-                    order['price'], is_maker=is_maker
+                    order['price'], is_maker=True
                 )
                 order['status'] = 'filled'
                 filled_orders.append(order['order_id'])
