@@ -142,6 +142,9 @@ class MarketMakingBot:
         Calculate how much to shift the mid price based on inventory.
         When long: shift mid DOWN so sell orders are closer to market (easier to fill).
         When short: shift mid UP so buy orders are closer to market (easier to fill).
+
+        IMPORTANT: The skew is capped so that the closest order (level 0)
+        never crosses the spread.  Max safe skew = half_spread - small buffer.
         """
         direction, _, notional, _ = self.get_inventory()
         if notional == 0:
@@ -151,11 +154,16 @@ class MarketMakingBot:
         inventory_pct = min((notional / self.max_inventory_usd) * 100, 100.0)
         skew = inventory_pct * self.skew_bps_per_pct
 
+        # Cap skew so the closest order never crosses the spread.
+        # Level-0 offset = half_spread_bps.  If skew >= half_spread_bps the
+        # "reduce" side order lands at or past mid, which will cross the
+        # real spread and become a taker fill.  Keep a 1-bps safety buffer.
+        max_skew = max(self.half_spread_bps - 1.0, 0.0)
+        skew = min(skew, max_skew)
+
         if direction == 'long':
-            # We're long → shift mid DOWN to bring sell orders closer to market
             return -skew
         elif direction == 'short':
-            # We're short → shift mid UP to bring buy orders closer to market
             return skew
         return 0.0
 
@@ -206,6 +214,7 @@ class MarketMakingBot:
         self.cancel_all()
 
         placed_count = 0
+        skipped_crossing = 0
 
         for level in range(self.levels):
             # Offset for this level
@@ -214,30 +223,40 @@ class MarketMakingBot:
             # Bid (buy) side
             if self._should_quote_side('buy'):
                 bid_price = skewed_mid * (1 - level_offset_bps / 10000)
-                bid_size = self.api.usd_to_asset_size(self.symbol, self.order_size_usd)
-                if bid_size > 0:
-                    result = self.api.buy_limit(self.symbol, bid_size, bid_price, LEVERAGE)
-                    order_id = result.get('orderId')
-                    if order_id:
-                        self.active_orders[order_id] = {
-                            'side': 'buy', 'price': bid_price,
-                            'size': bid_size, 'level': level,
-                        }
-                        placed_count += 1
+                # Hard guard: never place a buy above or at the real ask
+                if bid_price >= ask:
+                    logger.debug(f"Skipping buy L{level}: ${bid_price:.2f} >= ask ${ask:.2f}")
+                    skipped_crossing += 1
+                else:
+                    bid_size = self.api.usd_to_asset_size(self.symbol, self.order_size_usd)
+                    if bid_size > 0:
+                        result = self.api.buy_limit(self.symbol, bid_size, bid_price, LEVERAGE)
+                        order_id = result.get('orderId')
+                        if order_id:
+                            self.active_orders[order_id] = {
+                                'side': 'buy', 'price': bid_price,
+                                'size': bid_size, 'level': level,
+                            }
+                            placed_count += 1
 
             # Ask (sell) side
             if self._should_quote_side('sell'):
                 ask_price = skewed_mid * (1 + level_offset_bps / 10000)
-                ask_size = self.api.usd_to_asset_size(self.symbol, self.order_size_usd)
-                if ask_size > 0:
-                    result = self.api.sell_limit(self.symbol, ask_size, ask_price, LEVERAGE)
-                    order_id = result.get('orderId')
-                    if order_id:
-                        self.active_orders[order_id] = {
-                            'side': 'sell', 'price': ask_price,
-                            'size': ask_size, 'level': level,
-                        }
-                        placed_count += 1
+                # Hard guard: never place a sell below or at the real bid
+                if ask_price <= bid:
+                    logger.debug(f"Skipping sell L{level}: ${ask_price:.2f} <= bid ${bid:.2f}")
+                    skipped_crossing += 1
+                else:
+                    ask_size = self.api.usd_to_asset_size(self.symbol, self.order_size_usd)
+                    if ask_size > 0:
+                        result = self.api.sell_limit(self.symbol, ask_size, ask_price, LEVERAGE)
+                        order_id = result.get('orderId')
+                        if order_id:
+                            self.active_orders[order_id] = {
+                                'side': 'sell', 'price': ask_price,
+                                'size': ask_size, 'level': level,
+                            }
+                            placed_count += 1
 
         self.last_quoted_mid = raw_mid
 
@@ -246,10 +265,11 @@ class MarketMakingBot:
         inv_str = f"{direction} ${notional:.2f}" if direction != 'flat' else "flat"
         skew_str = f"{skew_bps:+.2f} bps" if skew_bps != 0 else "none"
 
+        skip_str = f" | Skipped: {skipped_crossing}" if skipped_crossing else ""
         logger.info(
             f"Quoted {placed_count} orders | "
             f"Mid: ${raw_mid:.2f} | Skew: {skew_str} | "
-            f"Inventory: {inv_str}"
+            f"Inventory: {inv_str}{skip_str}"
         )
 
     # =========================================================================

@@ -94,6 +94,13 @@ class PaperTradingAPI:
         self.taker_fee_rate = 0.00045
         self.maker_fee_rate = 0.00015
 
+        # Realistic fill simulation parameters
+        # Orders must rest this many seconds before becoming fill-eligible
+        self.min_resting_secs = float(os.environ.get('FILL_MIN_REST_SECS', '3'))
+        # Price must move THROUGH the order level by this many bps to fill
+        # (simulates queue position - you're not first in line)
+        self.fill_through_bps = float(os.environ.get('FILL_THROUGH_BPS', '1'))
+
         # Try to get actual fee rates from exchange
         try:
             fee_config = self.market_client.get_fee_config()
@@ -296,6 +303,7 @@ class PaperTradingAPI:
             'quantity': quantity,
             'price': fill_price,
             'fee': fee,
+            'fee_type': 'maker' if is_maker else 'taker',
             'pnl': realized_pnl,
             'balance_after': self.state.balance,
             'timestamp': time.time(),
@@ -309,26 +317,40 @@ class PaperTradingAPI:
         return realized_pnl
 
     def _check_limit_orders(self, symbol: str = None):
-        """Check if any limit orders should be filled based on current prices."""
+        """
+        Check if any limit orders should be filled based on current prices.
+
+        Realistic fill conditions:
+        1. Order must have been resting for at least `min_resting_secs`.
+        2. Price must move THROUGH the order price by `fill_through_bps`
+           (simulates queue position — we're not first in line).
+        """
         filled_orders = []
+        now = time.time()
+
         for order in self.state.open_orders:
             if order['status'] != 'open':
                 continue
             if symbol and order['symbol'] != symbol:
                 continue
 
+            # Minimum resting time check
+            age = now - order.get('timestamp', 0)
+            if age < self.min_resting_secs:
+                continue
+
             bid, ask = self.get_bid_ask(order['symbol'])
             if not bid or not ask:
                 continue
 
-            # Resting limit orders fill when the opposite side reaches
-            # the order price.  These are always maker fills because
-            # spread-crossing was already handled at placement time
-            # (see buy_limit / sell_limit).
+            # Fill-through threshold: price must move past our order by
+            # fill_through_bps to simulate queue priority / partial fills
+            through = order['price'] * (self.fill_through_bps / 10000)
+
             should_fill = False
-            if order['side'] == 'buy' and order['price'] >= ask:
+            if order['side'] == 'buy' and ask <= (order['price'] - through):
                 should_fill = True
-            elif order['side'] == 'sell' and order['price'] <= bid:
+            elif order['side'] == 'sell' and bid >= (order['price'] + through):
                 should_fill = True
 
             if should_fill:

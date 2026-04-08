@@ -127,11 +127,25 @@ print(f"  Buy trades:   {len(buys)}")
 print(f"  Sell trades:  {len(sells)}")
 print()
 
+# --- Maker vs Taker breakdown ---
+maker_trades = [t for t in trades if t.get("fee_type") == "maker"]
+taker_trades = [t for t in trades if t.get("fee_type") == "taker"]
+if maker_trades or taker_trades:
+    maker_fees = sum(t.get("fee", 0) for t in maker_trades)
+    taker_fees = sum(t.get("fee", 0) for t in taker_trades)
+    maker_pnl = sum(t.get("pnl", 0) for t in maker_trades)
+    taker_pnl = sum(t.get("pnl", 0) for t in taker_trades)
+    print("--- Maker vs Taker ---")
+    print(f"  Maker fills:  {len(maker_trades)} ({len(maker_trades)/len(trades)*100:.1f}%) | Fees: ${maker_fees:,.4f} | PnL: ${maker_pnl:+,.4f}")
+    print(f"  Taker fills:  {len(taker_trades)} ({len(taker_trades)/len(trades)*100:.1f}%) | Fees: ${taker_fees:,.4f} | PnL: ${taker_pnl:+,.4f}")
+    print()
+
 # --- Recent 10 Trades ---
 print("--- Last 10 Trades ---")
 for t in trades[-10:]:
     ts = datetime.fromtimestamp(t["timestamp"], tz=timezone.utc)
     side = t.get("side", "?").upper()
-    print(f"  {ts:%m-%d %H:%M} {side:>4} {t.get('quantity',0):.8f} @ ${t.get('price',0):>10,.2f} | PnL: ${t.get('pnl',0):+,.4f} | Fee: ${t.get('fee',0):.4f} | Bal: ${t.get('balance_after',0):,.2f}")
+    ft = t.get("fee_type", "?")[:1].upper()  # M or T
+    print(f"  {ts:%m-%d %H:%M} {side:>4} {t.get('quantity',0):.8f} @ ${t.get('price',0):>10,.2f} | PnL: ${t.get('pnl',0):+,.4f} | Fee: ${t.get('fee',0):.4f}({ft}) | Bal: ${t.get('balance_after',0):,.2f}")
 
 print("=" * 60)
