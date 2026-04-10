@@ -371,19 +371,28 @@ class PaperTradingAPI:
     # Trading functions (same interface as HibachiAPI)
     # =========================================================================
 
-    def buy_limit(self, symbol: str, quantity: float, price: float, leverage: int = 1):
-        """Place a buy limit order (simulated)."""
+    def buy_limit(self, symbol: str, quantity: float, price: float, leverage: int = 1, post_only: bool = True):
+        """
+        指値買い注文を発注（シミュレーション）。
+        post_only=True の場合、スプレッドを跨ぐ注文はtakerにせずreject。
+        MMボットでの逆選択を防ぐ標準的な動作。
+        """
         order_id = self._generate_order_id()
         nonce = int(time.time() * 1000)
 
-        # Check if order crosses the spread (immediate fill)
+        # 注文価格がスプレッドを跨ぐかチェック
         bid, ask = self.get_bid_ask(symbol)
         if ask and price >= ask:
-            # Taker fill - crosses the spread
-            self._execute_fill(symbol, 'buy', quantity, price, is_maker=False)
-            return {'nonce': nonce, 'id': order_id, 'orderId': order_id, 'status': 'filled'}
+            if post_only:
+                # Post-only: クロスする注文は reject（takerにしない）
+                print(f"[PAPER] Post-only BUY rejected: ${price:.2f} >= ask ${ask:.2f}")
+                return {'nonce': nonce, 'id': order_id, 'orderId': None, 'status': 'rejected'}
+            else:
+                # Taker fill - スプレッドを跨いだ即時約定
+                self._execute_fill(symbol, 'buy', quantity, price, is_maker=False)
+                return {'nonce': nonce, 'id': order_id, 'orderId': order_id, 'status': 'filled'}
 
-        # Otherwise, resting limit order
+        # 通常の指値注文（板に残る）
         self.state.open_orders.append({
             'order_id': order_id,
             'symbol': symbol,
@@ -398,19 +407,27 @@ class PaperTradingAPI:
         print(f"[PAPER] Limit BUY order placed: {quantity:.8f} {symbol} @ ${price:.2f}")
         return {'nonce': nonce, 'id': order_id, 'orderId': order_id, 'status': 'open'}
 
-    def sell_limit(self, symbol: str, quantity: float, price: float, leverage: int = 1):
-        """Place a sell limit order (simulated)."""
+    def sell_limit(self, symbol: str, quantity: float, price: float, leverage: int = 1, post_only: bool = True):
+        """
+        指値売り注文を発注（シミュレーション）。
+        post_only=True の場合、スプレッドを跨ぐ注文はtakerにせずreject。
+        """
         order_id = self._generate_order_id()
         nonce = int(time.time() * 1000)
 
-        # Check if order crosses the spread (immediate fill)
+        # 注文価格がスプレッドを跨ぐかチェック
         bid, ask = self.get_bid_ask(symbol)
         if bid and price <= bid:
-            # Taker fill
-            self._execute_fill(symbol, 'sell', quantity, price, is_maker=False)
-            return {'nonce': nonce, 'id': order_id, 'orderId': order_id, 'status': 'filled'}
+            if post_only:
+                # Post-only: クロスする注文は reject（takerにしない）
+                print(f"[PAPER] Post-only SELL rejected: ${price:.2f} <= bid ${bid:.2f}")
+                return {'nonce': nonce, 'id': order_id, 'orderId': None, 'status': 'rejected'}
+            else:
+                # Taker fill
+                self._execute_fill(symbol, 'sell', quantity, price, is_maker=False)
+                return {'nonce': nonce, 'id': order_id, 'orderId': order_id, 'status': 'filled'}
 
-        # Resting limit order
+        # 通常の指値注文
         self.state.open_orders.append({
             'order_id': order_id,
             'symbol': symbol,
