@@ -29,19 +29,19 @@ services:
     environment:
       - HIBACHI_SYMBOL=BTC/USDT-P
       - PAPER_BALANCE=10000
-      - MM_SPREAD_BPS=10
+      - MM_SPREAD_BPS=18
       - MM_ORDER_SIZE_USD=50
       - MM_LEVELS=2
       - MM_LEVEL_SPACING_BPS=5
       - MM_MAX_INVENTORY_USD=120
       - MM_SKEW_BPS_PER_PCT=0.8
       - MM_REQUOTE_INTERVAL=4
-      - MM_STALE_THRESHOLD_BPS=12
+      - MM_STALE_THRESHOLD_BPS=6
       - LEVERAGE=1
       - LOG_LEVEL=INFO
-      # Realistic fill simulation
+      # フィルシミュレーション設定
       - FILL_MIN_REST_SECS=3
-      - FILL_THROUGH_BPS=1
+      - FILL_THROUGH_BPS=2
 
   # Example: Paper trading bot - ETH Short
   # Uncomment to run multiple bots in parallel
